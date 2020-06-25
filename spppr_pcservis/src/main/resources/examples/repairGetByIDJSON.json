@@ -1,0 +1,11 @@
+{
+  "repairID": 1,
+  "staff": 2,
+  "partName": "MotherBoard",
+  "partType": "C",
+  "amount": 50,
+  "repairPrice": 120.20,
+  "dor": 2015-01-01,
+  "computer": 2
+
+}

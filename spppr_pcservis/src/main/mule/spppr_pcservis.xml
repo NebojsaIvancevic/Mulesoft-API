@@ -1,0 +1,1081 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e36b50b-9d1b-4df2-aa27-7ec052466060" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="8e4eb2f0-4423-4f21-8096-36e6b94f732d" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/MulesoftProjektniZadatakPcServis" driverClassName="org.postgresql.Driver" user="postgres" password="shonetheking123"/>
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="f61b8554-7af7-4ea7-bd45-2dab393c594c" >
+		<file:connection workingDir="C:\Users\yamato\AnypointStudio\studio-workspace\spppr_pcservis\src\main\resources" />
+	</file:config>
+	<flow name="staff_get" doc:id="ef4b169b-4556-4aea-9e9f-7dce4daeed07" >
+		<http:listener doc:name="Listener" doc:id="6ada6ea9-9400-496d-9f52-1e5f21d6a4d8" config-ref="HTTP_Listener_config" path="/staff" allowedMethods="GET"/>
+		<set-variable value="#[message.attributes.headers.active]" doc:name="Set Variable" doc:id="715a7daa-8cdc-449f-af5f-a8387ef151ae" variableName="varActive"/>
+		<choice doc:name="Choice" doc:id="5f6a0bf4-4cb7-460c-87d5-fba9cad15c2e" >
+			<when expression="#[vars.varActive != 'true' and vars.varActive != 'false' and vars.varActive != null]">
+				<raise-error doc:name="Raise error" doc:id="b727288f-de25-48eb-b9aa-eac0bc86749f" type="VALIDATION" description="Invalid header input"/>
+			</when>
+			<when expression="#[vars.varActive == 'false']">
+				<db:select doc:name="Get Active=False" doc:id="4e25a339-77e9-45a5-a59a-eea299984c56" config-ref="Database_Config">
+					<db:sql ><![CDATA[select from staff where active=false]]></db:sql>
+				</db:select>
+			</when>
+			<when expression="#[vars.varActive == 'true']" >
+				<db:select doc:name="Get Active = True" doc:id="c349ba28-33d1-4fab-8c6f-06df2097aa60" config-ref="Database_Config">
+					<db:sql ><![CDATA[select from staff where active=true]]></db:sql>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get All" doc:id="8610f826-6bfb-4931-b41c-8e85392d0c58" config-ref="Database_Config">
+					<db:sql ><![CDATA[select * from staff]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="e65b046a-4b71-4748-97eb-1cd7553e9b05" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	staffID: $.staffID,
+	firstName: $.firstName,
+	lastName: $.lastName,
+	active: $.active,
+	pid: $.pid,
+	address: $.address,
+	gender: $.gender,
+	city: $.city,
+	username: $.username,
+	dob: $.dob as Date,
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1a2597a9-e004-44db-bdf4-4e9299053b23" type="ANY">
+				<ee:transform doc:name="Transform Message" doc:id="99795e70-7efd-4008-894f-566b44e0ee37" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="404" doc:name="HttpStatus" doc:id="5ba2183c-53ca-46d5-8c6d-48dab760d3d0" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="staff_getById" doc:id="17c0f355-16df-493f-b4dd-ed785789d4c8" >
+		<http:listener doc:name="Listener" doc:id="d160af22-c047-4183-a3d4-c1c704b162db" config-ref="HTTP_Listener_config" path="/staff/{id}" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="aacf862c-0639-429f-8595-6061d69c9cde" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT *
+FROM staff 
+WHERE "staffID"=:id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'id' : attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<set-variable value="#[message.attributes.uriParams.id]" doc:name="Set Variable" doc:id="c1c7c1ed-1c1c-446c-a2f8-0c699808927f" variableName="varId"/>
+		<choice doc:name="Choice" doc:id="e685ed38-79a4-49ac-8c82-f61f632e2c95" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="d01ca4b6-efba-41b0-b8d2-9d14557f9776" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	staffID: payload01.staffID,
+	firstName: payload01.firstName,
+	lastName: payload01.lastName,
+	active: payload01.active,
+	pid: payload01.pid,
+	address: payload01.address,
+	gender: payload01.gender,
+	city: payload01.city,
+	username: payload01.username,
+	dob: payload01.dob as Date
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<file:write doc:name="Write" doc:id="bc196576-84bf-4fd8-a368-2cf77bdc958b" config-ref="File_Config" path="write.txt" mode="APPEND"/>
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="b4e495a2-2117-447b-8068-94f0924f6c37" type="VALIDATION" description="Wasnt able to finish operation"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="3290fcc7-22fe-464d-bfe3-2d6e6bcf48c6" >
+				<ee:transform doc:name="Transform Message" doc:id="97340a2b-6d9c-4ede-afd0-72fd1b031766" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="404" doc:name="Set Variable" doc:id="fa3f95fc-a737-4f0e-a74d-28f7f56af846" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="staff_post" doc:id="0c838a8c-b80e-45cb-826a-bfdf00a73e65" >
+		<http:listener doc:name="Listener" doc:id="309aa7dd-72f6-4eeb-bb71-8a510bb4fcb9" config-ref="HTTP_Listener_config" path="/staff" allowedMethods="POST"/>
+		<db:insert doc:name="Insert" doc:id="29f23255-3a30-426a-8f95-fd4e65a744df" config-ref="Database_Config">
+			<db:sql ><![CDATA[Insert into staff ("staffID","firstName","lastName",active,pid,address,gender,city,username,dob) values (nextval('staff_seq'),:firstName,:lastName,:active,:pid,:address,:gender,:city,:username,:dob)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	firstName:payload.firstName,
+	lastName:payload.lastName,
+	active:payload.active,
+	pid:payload.pid,
+	address:payload.address,
+	gender:payload.gender,
+	city:payload.city,
+	username:payload.username,
+	dob:payload.dob
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="072c72bc-4d2e-4b8d-a983-b10880b57d26" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message:"Data added"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f410801f-f722-47a2-99fd-c4abddf72d8f" >
+				<ee:transform doc:name="Transform Message" doc:id="95bcdbf2-781b-4d82-9fdb-9f5d37c6e967" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Failed to add"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="400" doc:name="Set Variable" doc:id="10efeda3-2eba-4f34-8530-fbcb0684c095" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="staff_put" doc:id="60b4a967-7f92-4e7f-a977-baa72e98d475" >
+		<http:listener doc:name="Listener" doc:id="0aaf6015-f625-4a91-a40f-4a94c40eef32" config-ref="HTTP_Listener_config" path="/staff" allowedMethods="PUT"/>
+		<set-variable value="#[{
+'staffID':payload.staffID,
+'firstName':payload.firstName,
+'lastName':payload.lastName,
+ 'active':payload.active,
+	'pid':payload.pid,
+	'address':payload.address,
+	'gender':payload.gender,
+	'city':payload.city,
+	'username':payload.username,
+	'dob':payload.dob
+}]" doc:name="Set Variable" doc:id="83a66022-f46c-4985-8733-0c76f9bec554" variableName="varData"/>
+		<db:select doc:name="Select" doc:id="ed3148a8-53df-4268-a9fd-af9a7b061162" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from staff where "staffID" = :id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'id' : payload.staffID}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="12fcc3fe-4c44-42a8-8a6f-d50a9a723699" >
+			<when expression="#[payload.staffID != null]">
+				<db:update doc:name="Update" doc:id="3273ff70-449e-4ac1-9808-46cf81b38212" config-ref="Database_Config">
+					<db:sql><![CDATA[update staff set "firstName"=:firstName, "lastName"=:lastName, active=:active, pid=:pid, address=:address, gender=:gender,city=:city,username=:username,dob=:dob
+where "staffID" = :staffID]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+'staffID':vars.varData.staffID,
+'firstName':vars.varData.firstName,
+'lastName':vars.varData.lastName,
+'active':vars.varData.active,
+'pid':vars.varData.pid,
+'address':vars.varData.address,
+'gender':vars.varData.gender,
+'city':vars.varData.city,
+'username':vars.varData.username,
+'dob':vars.varData.dob
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="Transform Message" doc:id="7b72face-59b4-4131-bcf2-0277a7aeb03d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data has been updated."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<db:insert doc:name="Insert" doc:id="6927276b-d617-4ce2-8727-6e2e63943721" config-ref="Database_Config">
+					<db:sql ><![CDATA[insert into staff ("staffID", "firstName", "lastName", active, pid, address,gender,city,username,dob) 
+values (nextval('staff_seq'),:firstName,:lastName,:active,:pid,:address,:gender,:city,:username,:dob)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+'staffID':vars.varData.staffID,
+'firstName':vars.varData.firstName,
+'lastName':vars.varData.lastName,
+'active':vars.varData.active,
+'pid':vars.varData.pid,
+'address':vars.varData.address,
+'gender':vars.varData.gender,
+'city':vars.varData.city,
+'username':vars.varData.username,
+'dob':vars.varData.dob
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="d1ab3e3b-864c-42c7-a9e6-001dbe17c3b9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data has been added."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4426029d-039d-4231-b4d0-60f768eeb9cd" >
+				<ee:transform doc:name="Transform Message" doc:id="5d526d73-756d-4294-b10c-c9b24031597b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="409" doc:name="Set Variable" doc:id="9f30b3d7-feb1-453a-9d72-1570b22d549a" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="staff_delete" doc:id="6bee0e2b-0d9d-4399-9d39-d2f0750485c6" >
+		<http:listener doc:name="Listener" doc:id="c024bca3-7cef-434e-8acd-62230a9949ea" config-ref="HTTP_Listener_config" path="/staff/{id}" allowedMethods="DELETE"/>
+		<db:delete doc:name="Delete" doc:id="59987dd2-6043-4ee2-bfcc-7df6259176e9" config-ref="Database_Config">
+			<db:sql ><![CDATA[delete from staff where "staffID" = :id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{"id": attributes.uriParams.id}]]]></db:input-parameters>
+		</db:delete>
+		<choice doc:name="Choice" doc:id="f26838ae-2a33-4641-8373-328660393c8c" >
+			<when expression="#[payload == 0]">
+				<raise-error doc:name="Raise error" doc:id="9a8f7b37-b814-4ac2-9c7f-b74e67ecbfe2" type="VALIDATION" description="No staff with passed id"/>
+			</when>
+			<otherwise >
+				<set-payload value="Success " doc:name="Set Payload" doc:id="0b789434-11f9-46c8-be4e-7424d22a5ed2" />
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="9f3da6d3-a413-42f6-9c81-e83f08cfff6f" >
+				<ee:transform doc:name="Transform Message" doc:id="a3043052-bec5-4c39-bd3d-8e7cf821a672" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="400" doc:name="HttpStatus" doc:id="a3d508f8-39a0-46ea-a27e-59fdbeac1aba" variableName="httpStatus"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="repair_get" doc:id="d04f9abe-718f-45e9-9620-c301aa09fee4" >
+		<http:listener doc:name="Listener" doc:id="18d4f93e-f3af-45ed-84de-87d43dfc023e" config-ref="HTTP_Listener_config" path="/repair" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="d4515aa0-5ec3-4bf3-914d-638af80d6969" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from repair]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="68529c44-be9b-431f-b158-304a23015afa" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	repairID: $.repairID,
+	staff: $.staff,
+	partName: $.partName,
+	partType: $.partType,
+	amount: $.amount,
+	repairPrice: $.repairPrice,
+	dor: $.dor as Date,
+	computer: $.computer
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="repair_getById" doc:id="ed3dc066-0de8-4f3e-b4ba-140957d73c4c" >
+		<http:listener doc:name="Listener" doc:id="a7ca8779-89dc-40e2-965b-d835a6b6ec3b" config-ref="HTTP_Listener_config" path="/repair/{id}" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="2b9d87f8-2bff-4f5d-9c5c-91216e87d84a" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT *
+FROM repair 
+WHERE "repairID"=:id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'id' : attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<set-variable value="#[message.attributes.uriParams.id]" doc:name="Set Variable" doc:id="f0527d85-9de6-4908-8a01-cc4f58a21d49" variableName="varId"/>
+		<choice doc:name="Choice" doc:id="5f0598df-8a98-49e1-a44e-278421cd67cc" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="051f34bb-fe6b-4b56-ad23-ca3d7fc79fb5">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	repairID: payload01.repairID,
+	staff: payload01.staff,
+	partName: payload01.partName,
+	partType: payload01.partType,
+	amount: payload01.amount,
+	repairPrice: payload01.repairPrice,
+	dor: payload01.dor as Date,
+	computer: payload01.computer,
+	username: payload01.username
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="fafd8a79-80da-4182-8a56-7a9f69b69d65" type="VALIDATION" description="No such repair with this ID" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="repair_post" doc:id="39e07425-0c55-44a4-87ce-9cb26a373754" >
+		<http:listener doc:name="Listener" doc:id="06a92738-7198-4170-85b7-d15c274bdbe6" config-ref="HTTP_Listener_config" path="/repair" allowedMethods="POST"/>
+		<set-variable value="#[{
+repairID:payload.repairID,
+staff:payload.staff,
+partName:payload.partName,
+partType:payload.partType,
+amount:payload.amount,
+repairPrice:payload.repairPrice,
+dor:payload.dor as Date,
+computer:payload.computer
+}]" doc:name="Set Variable" doc:id="4c85e24a-c3c4-429c-a92f-e2cc745ebf02" variableName="varData"/>
+		<set-variable value="InternalERP/internalERP" doc:name="Set Variable" doc:id="b2e721ae-22d5-467e-b877-12655b81dc15" variableName="varFilePath"/>
+		<choice doc:name="Choice" doc:id="3d6d1c98-297b-4651-835c-5785b4b08f42" >
+			<when expression="#[payload.amount&gt;100 and payload.partType=='C']">
+				<db:insert doc:name="Insert" doc:id="bcef521e-4751-44a5-a401-e8acbc85639b" config-ref="Database_Config">
+					<db:sql ><![CDATA[insert into repair ("repairID", staff, "partName", "partType", amount, "repairPrice",dor,computer) 
+values (nextval('repair_seq'),:staff,:partName,:partType,:amount,:repairPrice,:dor,:computer)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+staff:payload.staff,
+partName:payload.partName,
+partType:payload.partType,
+amount:payload.amount,
+'repairPrice':payload.repairPrice,
+dor:payload.dor as Date,
+computer:payload.computer
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="98f18576-4577-41fa-88d8-7ae6768d0936" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data added..."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<file:write doc:name="Write" doc:id="6a5d4b4f-9c1a-443b-9331-cec946173371" path="ChineseERP/chineseERP.json" config-ref="File_Config" mode="APPEND">
+					<file:content ><![CDATA[#[{
+'staff':vars.varData.staff,
+'partName':vars.varData.partName,
+'partType':vars.varData.partType,
+'amount':vars.varData.amount * 2,
+'repairPrice':vars.varData.repairPrice,
+'dor':vars.varData.dor as Date,
+'computer':vars.varData.computer
+}]]]></file:content>
+				</file:write>
+				<file:write doc:name="Write" doc:id="fac53032-800d-4044-b0d1-8b7d9f863dba" config-ref="File_Config" path="#[vars.varFilePath ++ '-' ++ vars.varData.dor ++ '.xml']">
+					<file:content ><![CDATA[#[%dw 2.0
+output application/xml
+var order=[
+	{"staff":vars.varData.staff},
+	{"partName":vars.varData.partName},
+	{"partType":vars.varData.partType},
+	{"amount":vars.varData.amount as Number * 2},
+	{"repairPrice":vars.varData.repairPrice},
+	{"dor":vars.varData.dor},
+	{"computer":vars.varData.computer}]
+---
+order: {(order)}]]]></file:content>
+				</file:write>
+			</when>
+			<otherwise >
+				<db:insert doc:name="Insert" doc:id="64ebb13e-a1b7-45d3-a30f-ca59ea80f66d" config-ref="Database_Config">
+					<db:sql ><![CDATA[insert into repair ("repairID", staff, "partName", "partType", amount, "repairPrice",dor,computer) 
+values (nextval('repair_seq'),:staff,:partName,:partType,:amount,:repairPrice,:dor,:computer)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+'repairID':payload.repairID,
+'staff':payload.staff,
+'partName':payload.partName,
+'partType':payload.partType,
+'amount':payload.amount,
+'repairPrice':payload.repairPrice,
+'dor':payload.dor,
+'computer':payload.computer
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="e27a4b05-f1f3-41c8-b45e-07ab21d51f68" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "DATA ADDED..."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<file:write doc:name="Write" doc:id="7b449297-bf29-4278-97c9-9b2dea8e35ad" config-ref="File_Config" path="#[vars.varFilePath ++ '-' ++ vars.varData.dor ++ '.xml']" mode="CREATE_NEW">
+					<file:content ><![CDATA[#[%dw 2.0
+output application/xml
+var order=[
+	{"staff":vars.varData.staff},
+	{"partName":vars.varData.partName},
+	{"partType":vars.varData.partType},
+	{"amount":vars.varData.amount as Number * 2},
+	{"repairPrice":vars.varData.repairPrice},
+	{"dor":vars.varData.dor as Date},
+	{"computer":vars.varData.computer}]
+---
+order: {(order)}]]]></file:content>
+				</file:write>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="repair_put" doc:id="7cd69065-f6d6-4fe9-abfd-64eea59049f4" >
+		<http:listener doc:name="Listener" doc:id="adc5e8b2-2938-40fc-b681-52b5924dc8e7" config-ref="HTTP_Listener_config" path="/repair/{id}" allowedMethods="PUT"/>
+		<db:update doc:name="Update" doc:id="2846aab1-16de-4ccb-9ff2-1b745ab79643" config-ref="Database_Config">
+			<db:sql ><![CDATA[UPDATE repair set staff=:staff, "partName"=:partName, "partType"=:partType, amount=:amount, "repairPrice"=:repairPrice, dor=:dor, computer=:computer
+WHERE "repairID"=:repairID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	staff:payload.staff,
+	partName:payload.partName,
+	partType:payload.partType,
+	amount:payload.amount,
+	repairPrice:payload.repairPrice,
+	dor:payload.dor as Date,
+	computer:payload.computer,
+	repairID:attributes.uriParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<choice doc:name="Choice" doc:id="9e451e3d-2235-4ea1-a080-168dd4041597" >
+			<when expression="#[payload.affectedRows == 0]">
+				<raise-error doc:name="Raise error" doc:id="36c834c9-0c01-4466-a845-74775d078de1" type="VALIDATION" description="No such repair with this id"/>
+			</when>
+			<otherwise>
+				<set-payload value="Succes in updating" doc:name="Set Payload" doc:id="c47c243a-7b45-4ea3-8ee5-bd4f55f6264c" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="repair_delete" doc:id="399e9bb5-21c0-4bf8-bc23-a5905dd2fdf0" >
+		<http:listener doc:name="Listener" doc:id="e768838e-f109-46f0-8ee7-3cffb58557cf" config-ref="HTTP_Listener_config" path="/repair/{id}" allowedMethods="DELETE"/>
+		<db:delete doc:name="Delete" doc:id="31955269-bf41-4ef4-ab1e-6acbab4a11fa" config-ref="Database_Config">
+			<db:sql><![CDATA[delete from repair where "repairID"=:id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'id': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:delete>
+		<choice doc:name="Choice" doc:id="fe9a4d1d-8eae-461c-a9a8-028be99eadb2" >
+			<when expression="#[payload == 0]">
+				<raise-error doc:name="Raise error" doc:id="d1fa6e3a-e606-4f88-831a-e78ba4c93aff" type="VALIDATION" description="No repair with this id"/>
+			</when>
+			<otherwise>
+				<set-payload value="Successful in deletion" doc:name="Set Payload" doc:id="52d1e288-0947-4ce0-9c68-0ba3e0024d96" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="client_get" doc:id="e4c26560-bf1c-4156-9843-99a753fcc11b" >
+		<http:listener doc:name="Listener" doc:id="a003db96-a1ff-40a3-ab4e-ffac8b66b2d0" config-ref="HTTP_Listener_config" path="/clients" allowedMethods="GET"/>
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Variable" doc:id="72c09faf-58a9-4a8d-ab74-ec6fb5cf3428" variableName="idVar"/>
+		<choice doc:name="Choice" doc:id="f03f5ae3-a2db-4991-a671-f8900b07dd4c" >
+			<when expression='#[vars.idVar != ""]'>
+				<db:select doc:name="Get By ID" doc:id="c8352eb0-51f8-492c-8611-9637cb835032" config-ref="Database_Config">
+					<db:sql ><![CDATA[select * from client where "clientID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get All" doc:id="99e62eff-847b-4736-b939-e1c0e4e9467d" config-ref="Database_Config">
+					<db:sql ><![CDATA[select * from client]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform Message" doc:id="0e088b5c-4040-42a0-86aa-fdf6009b6653" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	clientID: $.clientID,
+	firstName: $.firstName,
+	lastName: $.lastName,
+	contact: $.contact,
+	address: $.address,
+	username: $.username,
+	password: $.password
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="2d19709d-7909-4a1e-9b4f-b7442bf399d5" message="#[payload]"/>
+	</flow>
+	<flow name="client_post" doc:id="e97ccfba-ceef-4adb-a937-71d4551a915b" >
+		<http:listener doc:name="Listener" doc:id="c4a8a70f-6acb-4f83-8ad4-82a33ca3599d" config-ref="HTTP_Listener_config" path="/clients" allowedMethods="POST"/>
+		<db:insert doc:name="Insert" doc:id="836c0263-7524-4533-9a0e-a939dad28d81" config-ref="Database_Config">
+			<db:sql ><![CDATA[Insert into client ("clientID","firstName","lastName",contact,address,username,password) values (nextval('client_seq'),:firstName,:lastName,:contact,:address,:username,:password)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	firstName:payload.firstName,
+	lastName:payload.lastName,
+	contact:payload.contact,
+	address:payload.address,
+	username:payload.username,
+	password:payload.password
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="919b60d3-11f7-4460-98b5-396abe67e090" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: 'Data added successfully'
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="client_put" doc:id="6699812e-c9f1-4f65-bb57-9ecdddf58680" >
+		<http:listener doc:name="Listener" doc:id="e2944da5-762a-4147-84d4-06bc3fc7e3ef" config-ref="HTTP_Listener_config" path="/clients" allowedMethods="PUT"/>
+		<db:update doc:name="Update" doc:id="abc51ffd-a847-4805-9594-b36af4697a93" config-ref="Database_Config">
+			<db:sql ><![CDATA[UPDATE client set "firstName"=:firstName, "lastName"=:lastName, contact=:contact, address=:address, password=:password
+WHERE "clientID"=:clientID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	firstName:payload.firstName,
+	lastName:payload.lastName,
+	contact:payload.contact,
+	address:payload.address,
+	username:payload.username,
+	password:payload.password,
+	clientID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="5cb99aec-106c-43ec-8561-f06382c91b43" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="client_delete" doc:id="7330a3ba-ad1a-43b4-a961-3adf67a97841" >
+		<http:listener doc:name="Listener" doc:id="e7eb896d-8902-4215-a628-ef71a628e56c" config-ref="HTTP_Listener_config" path="/clients" allowedMethods="DELETE"/>
+		<db:delete doc:name="Delete" doc:id="55c4d7fa-c49e-43e9-9af0-49f5bcb50e24" config-ref="Database_Config">
+			<db:sql ><![CDATA[delete  from client where "clientID"=:clientID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	clientID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="30151274-7574-4306-b8a4-26bea9f246bd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="sale_get" doc:id="9a7b2cfb-4e2b-41d2-af50-5c67a037085e" >
+		<http:listener doc:name="Listener" doc:id="6c7043d4-1f78-436e-9d60-41035ba0294a" config-ref="HTTP_Listener_config" path="/sales" allowedMethods="GET" />
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Variable" doc:id="4f30375c-e0e7-4914-8140-72e744866012" variableName="idVar" />
+		<choice doc:name="Choice" doc:id="16680c5f-e229-4231-8f33-6e8eb41d9360" >
+			<when expression='#[vars.idVar != ""]' >
+				<db:select doc:name="Get By ID" doc:id="0c56edb9-dadc-4dd5-8deb-d5c4518c41cc" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from sale where "saleID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get All" doc:id="dbcf8187-b1c1-4084-a025-dbb997d5bb1b" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from sale]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform_Message" doc:id="1678080b-3f38-4fc8-bc88-36723a985668">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	saleID: $.saleID,
+	pcName: $.pcName,
+	pcSpec: $.pcSpec,
+	pcPrice: $.pcPrice,
+	dos: $.dos as Date,
+	staff: $.staff,
+	computer: $.computer
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="5b6b7b5e-87b0-411c-9cba-8997c855cccf" message="#[payload]"/>
+	</flow>
+	<flow name="sale_post" doc:id="09da506a-547e-4a16-a93d-1d33ead35256" >
+		<http:listener doc:name="Listener" doc:id="9ffb51a7-add7-47d6-a876-b746f9c191e9" config-ref="HTTP_Listener_config" path="/sales" allowedMethods="POST" />
+		<db:insert doc:name="Insert" doc:id="6f8da515-f490-4074-90fb-1a2c6b3e5b48" config-ref="Database_Config" >
+			<db:sql ><![CDATA[Insert into sale ("saleID","pcName","pcSpec","pcPrice",dos,staff,computer) values (nextval('sale_seq'),:pcName,:pcSpec,:pcPrice,:dos,:staff,:computer)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	pcName:payload.pcName,
+	pcSpec:payload.pcSpec,
+	pcPrice:payload.pcPrice,
+	dos:payload.dos,
+	staff:payload.staff,
+	computer:payload.computer
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="3bb24b1b-5f92-473b-aeef-2f4f493a692e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message:"Data added."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="sale_put" doc:id="323db5d3-5aac-4a6b-b111-4c0ac0201672" >
+		<http:listener doc:name="Listener" doc:id="8b5e83bc-67bc-4eaa-b2fa-07a0f7d0ea6d" config-ref="HTTP_Listener_config" path="/sales" allowedMethods="PUT" />
+		<db:update doc:name="Update" doc:id="cb9833d9-2a10-4267-a3dd-fd1a98a7b5a6" config-ref="Database_Config" >
+			<db:sql ><![CDATA[UPDATE sale set "pcName"=:pcName, "pcSpec"=:pcSpec, "pcPrice"=:pcPrice, dos=:dos, staff=:staff,computer=:computer
+WHERE "saleID"=:saleID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	pcName:payload.pcName,
+	pcSpec:payload.pcSpec,
+	pcPrice:payload.pcPrice,
+	dos:payload.dos,
+	staff:payload.staff,
+	computer:payload.computer,
+	saleID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="2d40e424-e3d2-486c-9514-cf0b955f95ab" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="sale_delete" doc:id="a10b5875-3227-4364-9f6e-87d06c3799b2" >
+		<http:listener doc:name="Listener" doc:id="0b67d407-7329-448b-ae5f-6013430d6d4b" config-ref="HTTP_Listener_config" path="/sales" allowedMethods="DELETE" />
+		<db:delete doc:name="Delete" doc:id="4782bb6f-e494-4e0d-b94e-1b287ab271ec" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete  from sale where "saleID"=:saleID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	saleID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="ba0b62eb-234e-4c54-8f25-8041a6847416" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="computer_get" doc:id="51b25eef-c0b3-4d4a-a8e1-f2dcc2231bdf" >
+		<http:listener doc:name="Listener" doc:id="ab2ca068-3ea4-4505-bca9-c87e9dbdbfe7" config-ref="HTTP_Listener_config" path="/computers" allowedMethods="GET" />
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Variable" doc:id="b5cb7f35-69e6-4ef2-8055-f5141cc8e13f" variableName="idVar" />
+		<choice doc:name="Choice" doc:id="5c6e05d8-f877-4967-a68b-5fea37c3e3f4" >
+			<when expression='#[vars.idVar != ""]' >
+				<db:select doc:name="Get By ID" doc:id="0efaf14b-abd6-46e0-85e6-c0bacd28e435" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from computer where "computerID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get All" doc:id="2ec2b121-2208-4205-ae5f-b1c3bb658574" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from computer]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform_Message" doc:id="1b7f4ff4-a2d7-4c06-a86b-6a17b670edbe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	computerID: $.computerID,
+	modelNum: $.modelNum,
+	spec: $.spec,
+	client: $.client,
+	computerBrand: $.computerBrand,
+	computerModel: $.computerModel,
+	computerType: $.computerType
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="c32bbf0c-8cd5-41ea-a531-3e6d97191bbd" message="#[payload]" />
+	</flow>
+	<flow name="computer_post" doc:id="22cd6d6e-c0e6-4442-985f-e9dd363ef5ef" >
+		<http:listener doc:name="Listener" doc:id="f7661a74-dec4-4baf-b7e8-9ed0fab3dd65" config-ref="HTTP_Listener_config" path="/computers" allowedMethods="POST" />
+		<db:insert doc:name="Insert" doc:id="0f676670-cc1c-488a-a683-aa7a73eef499" config-ref="Database_Config" >
+			<db:sql ><![CDATA[Insert into computer ("computerID","modelNum",spec,client,"computerBrand","computerModel","computerType") values (nextval('computer_seq'),:modelNum,:spec,:client,:computerBrand,:computerModel,:computerType)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	modelNum:payload.modelNum,
+	spec:payload.spec,
+	client:payload.client,
+	computerBrand:payload.computerBrand,
+	computerModel:payload.computerModel,
+	computerType:payload.computerType
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="a7836494-30af-4925-8348-b9907d7b2d90" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message:"Data added."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="computer_put" doc:id="53889bb1-f633-4a6c-a29b-f526237d8305" >
+		<http:listener doc:name="Listener" doc:id="c96ae8ef-32bb-49ea-be28-474d1bf0a183" config-ref="HTTP_Listener_config" path="/computers" allowedMethods="PUT" />
+		<db:update doc:name="Update" doc:id="f58c18db-b3dd-436e-89d1-c5da06336803" config-ref="Database_Config" >
+			<db:sql ><![CDATA[UPDATE computer set "modelNum"=:modelNum, spec=:spec, client=:client, "computerBrand"=:computerBrand, "computerModel"=:computerModel,"computerType"=:computerType
+WHERE "computerID"=:computerID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	modelNum:payload.modelNum,
+	spec:payload.spec,
+	client:payload.client,
+	computerBrand:payload.computerBrand,
+	computerModel:payload.computerModel,
+	computerType:payload.computerType,
+	computerID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="b7cf2d3a-a874-4f92-9428-6cc6693cd815" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="computer_delete" doc:id="e93f2355-cb14-4665-b382-b52100c4c20c" >
+		<http:listener doc:name="Listener" doc:id="9fe61eeb-dbf2-42c2-b008-4480973ce924" config-ref="HTTP_Listener_config" path="/computers" allowedMethods="DELETE" />
+		<db:delete doc:name="Delete" doc:id="0c99ac6e-8a92-4b32-8553-fbcda5150bb1" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete  from computer where "computerID"=:computerID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	computerID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="8aef5ace-f311-4281-a6c3-405db6be716a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="brand_get" doc:id="905f2f65-35b2-4b92-bba5-70cb770e4372" >
+		<http:listener doc:name="Listener" doc:id="b6248051-7031-4810-a1ea-d18d02fcc572" config-ref="HTTP_Listener_config" path="/brands" allowedMethods="GET" />
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Variable" doc:id="0d6ea09e-a0c7-4956-982b-7215f5e24a2a" variableName="idVar" />
+		<choice doc:name="Choice" doc:id="a1767021-31b0-4974-a3dd-5c95f0f269d9" >
+			<when expression='#[vars.idVar != ""]' >
+				<db:select doc:name="Get By ID" doc:id="3fe90c49-45b1-4b8f-b5bf-8b81fc1c1b36" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerBrand" where "brandID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get All" doc:id="74947fb4-ea9f-4934-b3ad-f6730cfa1ab0" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerBrand"]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform_Message" doc:id="40010123-7b4e-4dba-8b00-68c87755de47">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	brandID: $.brandID,
+	brandName: $.brandName,
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="15231882-a2e7-4ccc-bc9a-5474d18bb5a2" message="#[payload]" />
+	</flow>
+	<flow name="brand_post" doc:id="2426cb29-13ed-4a58-9e12-b02360dd7d8e" >
+		<http:listener doc:name="Listener" doc:id="5cfd16f4-1d35-4cb4-85e5-bcadce668a00" config-ref="HTTP_Listener_config" path="/brands" allowedMethods="POST"/>
+		<db:insert doc:name="Insert" doc:id="09bf8b08-040c-4e9e-aac0-78ea781d86e2" config-ref="Database_Config">
+			<db:sql ><![CDATA[Insert into "computerBrand" ("brandID","brandName") values (nextval('computerBrand_seq'),:brandName)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	brandName:payload.brandName
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="78243e8a-9b1c-4369-b604-88e4d6dee451" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data added."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="brand_put" doc:id="29a47143-1e20-4f7f-9ec3-5565b7e9b7cf" >
+		<http:listener doc:name="Listener" doc:id="f447aae7-e6dd-4924-893b-ad4a3d291bed" config-ref="HTTP_Listener_config" path="/brands" allowedMethods="PUT" />
+		<db:update doc:name="Update" doc:id="3144f656-ad07-409a-9190-22d0c18e3662" config-ref="Database_Config" >
+			<db:sql ><![CDATA[UPDATE "computerBrand" set "brandName"=:brandName
+WHERE "brandID"=:brandID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	brandName:payload.brandName,
+	brandID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="b523a061-bd94-4557-a7fc-467faf93d5aa" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="brand_delete" doc:id="0b1df11a-5367-4210-8620-c1c276b06884" >
+		<http:listener doc:name="Listener" doc:id="734fb0fe-084f-4ea6-a623-551198e3b4cb" config-ref="HTTP_Listener_config" path="/brands" allowedMethods="DELETE" />
+		<db:delete doc:name="Delete" doc:id="4058af50-eec5-41d6-b836-00d8b54a16a3" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete  from "computerBrand" where "brandID"=:brandID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	brandID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="72bfa042-8376-4026-984c-0be8fc1fa939" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="model_get" doc:id="eb276d4c-d2f1-4369-915c-facd8e867632" >
+		<http:listener doc:name="Listener" doc:id="6b9873b1-fedd-4b8c-988d-0bb449ab0c75" config-ref="HTTP_Listener_config" path="/models" allowedMethods="GET" />
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Variable" doc:id="ca8fa53c-2838-4965-a6c0-f8d667721708" variableName="idVar" />
+		<choice doc:name="Choice" doc:id="eb0eed1f-cca0-4d5b-b164-2b3484e6b4c2" >
+			<when expression='#[vars.idVar != ""]' >
+				<db:select doc:name="Get by id" doc:id="a62b775c-ac4f-4599-922b-3a0eb621594d" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerModel" where "modelID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get all" doc:id="381f7594-ce8c-4994-8cd2-a4b967a76287" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerModel"]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform_Message" doc:id="adcec8b7-b48b-4966-adc5-6ee83fac85e0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	modelID: $.modelID,
+	modelName: $.modelName,
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="650f5023-1ac7-40aa-97ba-616c8186e00a" message="#[payload]" />
+	</flow>
+	<flow name="model_post" doc:id="b3fe81e7-a92c-47a7-ae42-aac6ca2540fa" >
+		<http:listener doc:name="Listener" doc:id="59374b4d-6626-4222-8de4-6794472bcc06" config-ref="HTTP_Listener_config" path="/models" allowedMethods="POST" />
+		<db:insert doc:name="Insert" doc:id="a2ab0b7c-a645-45b5-a3d6-7c9f82fa1f35" config-ref="Database_Config" >
+			<db:sql ><![CDATA[Insert into "computerModel" ("modelID","modelName") values (nextval('computerModel_seq'),:modelName)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	modelName:payload.modelName
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="5236d364-fccf-40ac-bb35-da1138b1b34b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data added."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="model_put" doc:id="b2c179f4-837f-444a-8cae-03cb18a60353" >
+		<http:listener doc:name="Listener" doc:id="5b38ec46-f036-458e-a8be-ed0d81992dc4" config-ref="HTTP_Listener_config" path="/models" allowedMethods="PUT" />
+		<db:update doc:name="Update" doc:id="9ca69305-7db4-4e79-8398-17ab80338ae8" config-ref="Database_Config" >
+			<db:sql ><![CDATA[UPDATE "computerModel" set "modelName"=:modelName
+WHERE "modelID"=:modelID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	modelName:payload.modelName,
+	modelID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="0f534d7a-1091-45b9-8f80-5aed29cde201" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="model_delete" doc:id="f0937e5b-11a0-4055-a9fc-1155efb693c6" >
+		<http:listener doc:name="Listener" doc:id="32b3c27d-404b-4981-a1a8-5a7e1112ff06" config-ref="HTTP_Listener_config" path="/models" allowedMethods="DELETE" />
+		<db:delete doc:name="Delete" doc:id="3bf864f5-ad24-4919-a32e-7bec5e9d7133" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete  from "computerModel" where "modelID"=:modelID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	modelID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="ed88bb37-edc3-4168-92c6-d83d3ac45565" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="type_get" doc:id="3ffc1083-f2eb-4d50-95e7-e409f8a12431" >
+		<http:listener doc:name="Listener" doc:id="6af0b23f-2123-4ae9-ab93-626bfa081f42" config-ref="HTTP_Listener_config" path="/types" allowedMethods="GET" />
+		<set-variable value='#[attributes.queryParams.id default ""]' doc:name="Set Var" doc:id="a2c98998-7d13-44a3-9417-518d421eba5e" variableName="idVar" />
+		<choice doc:name="Choice" doc:id="cd399a50-dcaf-49ad-aab2-528e63653d16" >
+			<when expression='#[vars.idVar != ""]' >
+				<db:select doc:name="Get by id" doc:id="903d95c5-967f-48f5-98b5-5deeb02cd9ef" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerType" where "typeID"=:id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	id:vars.idVar
+}]]]></db:input-parameters>
+				</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Get all" doc:id="4fdb18f0-8ee8-4813-ab28-498a4fbbaf50" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from "computerType"]]></db:sql>
+				</db:select>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Transform_Message" doc:id="46ad11e7-85ba-45ae-b023-105c24a928d1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map {
+	typeID: $.typeID,
+	typeName: $.typeName
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="6e25e947-0abb-4228-aaa8-c0507bb72bd8" message="#[payload]" />
+	</flow>
+	<flow name="type_post" doc:id="16413022-3aa8-4532-9580-8c857d13fa5e" >
+		<http:listener doc:name="Listener" doc:id="94519b28-474b-4a49-b07c-54dd545146f1" config-ref="HTTP_Listener_config" path="/types" allowedMethods="POST" />
+		<db:insert doc:name="Insert" doc:id="d2d7d445-3d5b-43e3-a831-c74b9bec4489" config-ref="Database_Config" >
+			<db:sql ><![CDATA[Insert into "computerType" ("typeID","typeName") values (nextval('computerType_seq'),:typeName)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	typeName:payload.typeName
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="5e1583f9-96eb-4742-80af-367c59edf5d3">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data added."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="type_put" doc:id="84d20e6c-f517-4655-8fab-1588c5083759" >
+		<http:listener doc:name="Listener" doc:id="df6a54d5-f781-4114-bc9a-8d3e8c9c433c" config-ref="HTTP_Listener_config" path="/types" allowedMethods="PUT" />
+		<db:update doc:name="Update" doc:id="c325a541-2c77-4184-9ebf-d844bd476948" config-ref="Database_Config" >
+			<db:sql ><![CDATA[UPDATE "computerType" set "typeName"=:typeName
+WHERE "typeID"=:typeID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	typeName:payload.typeName,
+	typeID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="711787e6-e88b-4e61-bf97-5f37eb9a17dd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="type_delete" doc:id="d39dfc21-e467-4374-bad8-91d83149b69b" >
+		<http:listener doc:name="Listener" doc:id="a9832f46-8b73-4d98-b5a1-ad009f096765" config-ref="HTTP_Listener_config" path="/types" allowedMethods="DELETE" />
+		<db:delete doc:name="Delete" doc:id="ba054848-3945-4621-b348-ef783a508226" config-ref="Database_Config" >
+			<db:sql ><![CDATA[delete  from "computerType" where "typeID"=:typeID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	typeID:attributes.queryParams.id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="955ab34e-2449-4c7e-a767-3d425ac20d90" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Data Deleted."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

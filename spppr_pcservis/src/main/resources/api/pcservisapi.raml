@@ -1,0 +1,634 @@
+#%RAML 1.0
+title: PC Servis API
+baseUri: http://localhost:8081/api
+
+types:
+  Client:
+    type: object
+    properties:
+      clientID: integer
+      firstName: string
+      lastName: string
+      contact: string
+      address?: string
+      username: string
+      password: string
+      
+  ClientNoID:
+    type: object
+    properties:
+      firstName: string
+      lastName: string
+      contact: string
+      address?: string
+      username: string
+      password: string
+      
+  Staff:
+    type: object
+    properties:
+      staffID: integer
+      firstName: string
+      lastName: string
+      active: boolean
+      pid: string
+      address?: string
+      gender:
+        enum: [male, female]
+      city: string
+      username: string
+      dob: date-only
+  
+  StaffNoID:
+    type: object
+    properties:
+      firstName: string
+      lastName: string
+      active: boolean
+      pid: string
+      address?: string
+      gender:
+        enum: [male, female]
+      city: string
+      username: string
+      dob: date-only
+        
+  ComputerBrand:
+    type: object
+    properties:
+      brandID: integer
+      brandName: string
+      
+  ComputerBrandNoID:
+    type: object
+    properties:
+      brandName: string
+  
+  ComputerModel:
+    type: object
+    properties:
+      modelID: integer
+      modelName: string
+      
+  ComputerModelNoID:
+    type: object
+    properties:
+      modelName: string
+  
+  ComputerType:
+    type: object
+    properties:
+      typeID: integer
+      typeName: string
+      
+  ComputerTypeNoID:
+    type: object
+    properties:
+      typeName: string
+           
+  Computer:
+    type: object
+    properties:
+      computerID: integer
+      modelNum: string
+      spec: string
+      client: Client
+      computerBrand: ComputerBrand
+      computerModel: ComputerModel
+      computerType: ComputerType
+  
+  ComputerNoID:
+    type: object
+    properties:
+      modelNum: string
+      spec: string
+      client: Client
+      computerBrand: ComputerBrand
+      computerModel: ComputerModel
+      computerType: ComputerType 
+                     
+  Repair:
+    type: object
+    properties:
+      repairID: integer
+      staff: Staff     
+      partName: string
+      partType:
+        enum: [A, B, C]
+      amount: integer
+      repairPrice: number
+      dor: date-only
+      computer: Computer
+  
+  RepairNoID:
+    type: object
+    properties:
+      staff: Staff     
+      partName: string
+      partType:
+        enum: [A, B, C]
+      amount: integer
+      repairPrice: number
+      dor: date-only
+      computer: Computer  
+            
+  Sale:
+    type: object
+    properties:
+      saleID: integer
+      pcName: string     
+      pcSpec: string
+      pcPrice: number
+      dos: date-only
+      staff: Staff
+      computer: Computer  
+      
+  SaleNoID:
+    type: object
+    properties:
+      pcName: string     
+      pcSpec: string
+      pcPrice: number
+      dos: date-only
+      staff: Staff
+      computer: Computer    
+/staff:
+  get: 
+    headers: 
+      active:
+        enum: ["true","false"]
+        required: false
+    responses: 
+      200:
+        body: 
+          application/json:
+            type: Staff[] 
+            examples: 
+              output: !include /Examples/AllStaffExample.raml  
+      400:
+        body: 
+          application/json: 
+            example: |
+             { "message": "It appears that the header value isn't correct"}
+  post:
+     body: 
+      application/json:
+        type: StaffNoID
+        examples:
+          input: !include /Examples/StaffNoIdExample.raml
+     responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+             { "message": "Staff member added" }
+  /{staffID}:
+     get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Staff
+              examples:
+                output: !include /Examples/StaffExample.raml
+        404:
+           description: Bad request
+           body:
+            application/json:
+              example: |
+               { "code": 404,
+                "message": "Staff member not found" }
+              
+     delete:
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+               { "message": "Staff member deleted" }
+        404:
+          description: Bad request
+          body:
+            application/json:
+              example: |
+                { "code": 404,
+                "message": "Staff member Not FOund" }
+
+     put:
+      body:
+        application/json:
+          type: StaffNoID
+          examples:
+            input: !include /Examples/StaffNoIdExample.raml
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+               { "message": "Staff member updated" }                                                                                                                                                                                                                                                                                                  
+/repairs:
+  get: 
+    responses: 
+      200:
+        body: 
+          application/json:
+            type: Repair[] 
+            examples: 
+              output: !include /Examples/AllRepairsExample.raml  
+      400:
+        body: 
+          application/json: 
+            example: |
+             { "message": "Something went wrong oops"}
+  post:
+     body: 
+      application/json:
+        type: RepairNoID
+        examples:
+          input: !include /Examples/RepairNoIdExample.raml
+     responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+             { "message": "Repair added" }
+  /{repairID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Repair
+              examples:
+                output: !include /Examples/RepairExample.raml
+        404:
+           description: Bad request
+           body:
+            application/json:
+              example: |
+               { "code": 404,
+                "message": "Repair not found" }
+          
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+               { "message": "Repair deleted" }
+        404:
+          description: Bad request
+          body:
+            application/json:
+              example: |
+                { "code": 404,
+                "message": "Repair Not FOund" }
+
+    put:
+      body:
+        application/json:
+          type: RepairNoID
+          examples:
+            input: !include /Examples/RepairNoIdExample.raml
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+               { "message": "Staff member updated" }
+              
+/computertypes:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: ComputerType[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: ComputerTypeNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Computer has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{typeID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: ComputerType
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Type was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: ComputerType
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"}
+              
+              
+/computermodels:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: ComputerModel[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: ComputerModelNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Model has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{modelID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: ComputerModel
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Model was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: ComputerModel
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"}
+
+
+/computerbrands:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: ComputerBrand[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: ComputerBrandNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Brand has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{brandID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: ComputerBrand
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Brand was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: ComputerBrand
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"} 
+
+/clients:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: Client[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: ClientNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Client has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{clientID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Client
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Client was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: Client
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"}
+       
+
+                
+                                
+                                                
+/computers:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: Computer[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: ComputerNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Computer has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{computerID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Computer
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Computer was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: Computer
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"}
+                                                                                       
+/sales:
+  get:
+    responses:
+        200:
+          body:
+            application/json:
+             type: Sale[]
+        400:
+          body:
+           application/json:
+            example: |
+              { "message": "Error occured while retrieving info"} 
+                  
+  post:
+    body:
+      application/json:
+        type: SaleNoID
+    responses:
+      201:
+        body:
+          application/json:
+           example: |
+              { "message": "Sale has been added"}
+      400:
+        body:
+          application/json:
+           example: |
+              { "message": "Error while adding"}      
+
+  /{saleID}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Sale
+    delete:
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Sale was deleted"}
+              
+    put:
+      body:
+        application/json:
+          type: Sale
+      responses:
+        200:
+          body:
+            application/json:
+             example: |
+              { "message": "Error while updating"}

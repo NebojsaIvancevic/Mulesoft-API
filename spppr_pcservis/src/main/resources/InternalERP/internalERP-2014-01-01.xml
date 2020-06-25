@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<order>
+  <staff>2</staff>
+  <partName>APU</partName>
+  <partType>A</partType>
+  <amount>44</amount>
+  <repairPrice>150.84</repairPrice>
+  <dor>2014-01-01</dor>
+  <computer>2</computer>
+</order>

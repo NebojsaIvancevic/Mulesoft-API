@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="output" format="json">
+      <types:shape format="weave" example="examples/repairGetByIDJSON.json"><![CDATA[%dw 2.0
+
+type output = {|
+  repairID: Number {"typeId": "int"}, 
+  staff: Number {"typeId": "int"}, 
+  partName: String, 
+  partType: String, 
+  amount: Number {"typeId": "int"}, 
+  repairPrice: Number {"typeId": "double"}, 
+  dor: String, 
+  computer: Number {"typeId": "int"}
+|} {"example": "{\\\"repairID\\\":1,\\\"staff\\\":2,\\\"partName\\\":\\\"MotherBoard\\\",\\\"partType\\\":\\\"C\\\",\\\"amount\\\":50,\\\"repairPrice\\\":120.20,\\\"dor\\\":\\\"2015-01-01\\\",\\\"computer\\\":2}"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#051f34bb-fe6b-4b56-ad23-ca3d7fc79fb5"/>
+</types:mule>

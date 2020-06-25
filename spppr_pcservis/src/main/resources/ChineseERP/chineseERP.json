@@ -1,0 +1,17 @@
+{
+  "staff": 2,
+  "partName": "WWW",
+  "partType": "C",
+  "amount": 500,
+  "repairPrice": 90.84,
+  "dor": "2018-01-01",
+  "computer": 2
+}{
+  "staff": 1,
+  "partName": "Cooler",
+  "partType": "C",
+  "amount": 440,
+  "repairPrice": 150.84,
+  "dor": "2015-01-01",
+  "computer": 2
+}

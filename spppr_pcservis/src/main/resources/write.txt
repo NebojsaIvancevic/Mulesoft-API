@@ -1,0 +1,66 @@
+[
+  {
+    "staffID": 1,
+    "firstName": "Luke",
+    "lastName": "Smith",
+    "active": true,
+    "pid": "2209112345691",
+    "address": "Downtown road 3002",
+    "gender": "male",
+    "city": "Cincinati",
+    "username": "luke22",
+    "dob": "1984-01-01T00:00:00"
+  }
+][
+  {
+    "staffID": 1,
+    "firstName": "Luke",
+    "lastName": "Smith",
+    "active": true,
+    "pid": "2209112345691",
+    "address": "Downtown road 3002",
+    "gender": "male",
+    "city": "Cincinati",
+    "username": "luke22",
+    "dob": "1984-01-01T00:00:00"
+  }
+][
+  {
+    "staffID": 2,
+    "firstName": "Luke",
+    "lastName": "Skywalker",
+    "active": false,
+    "pid": "2209112345691",
+    "address": "Downtown road 3002",
+    "gender": "male",
+    "city": "Cincinati",
+    "username": "luke22",
+    "dob": "1984-01-01T00:00:00"
+  }
+][
+  {
+    "staffID": 1,
+    "firstName": "Luke",
+    "lastName": "Smith",
+    "active": true,
+    "pid": "2209112345691",
+    "address": "Downtown road 3002",
+    "gender": "male",
+    "city": "Cincinati",
+    "username": "luke22",
+    "dob": "1984-01-01T00:00:00"
+  }
+][
+  {
+    "staffID": 1,
+    "firstName": "Luke",
+    "lastName": "Smith",
+    "active": true,
+    "pid": "2209112345691",
+    "address": "Downtown road 3002",
+    "gender": "male",
+    "city": "Cincinati",
+    "username": "luke22",
+    "dob": "1984-01-01"
+  }
+]
